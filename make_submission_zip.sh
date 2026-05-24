@@ -59,7 +59,24 @@ find "$SUB" -name ".ipynb_checkpoints" -type d -prune -exec rm -rf {} + 2>/dev/n
 echo
 echo "== Membuat $ZIP =="
 rm -f "$ZIP"
-zip -r "$ZIP" "$SUB" -x '*.gitkeep' '*/__pycache__/*' '*/.ipynb_checkpoints/*' >/dev/null
+if command -v zip >/dev/null 2>&1; then
+  zip -r "$ZIP" "$SUB" -x '*.gitkeep' '*/__pycache__/*' '*/.ipynb_checkpoints/*' >/dev/null
+else
+  echo "  (perkakas 'zip' tidak ada -> memakai Python zipfile)"
+  python3 - "$SUB" "$ZIP" <<'PY'
+import sys, os, zipfile, fnmatch
+sub, out = sys.argv[1], sys.argv[2]
+excl = ("*.gitkeep", "*.bak")
+with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+    for root, dirs, files in os.walk(sub):
+        dirs[:] = [d for d in dirs if d not in ("__pycache__", ".ipynb_checkpoints")]
+        for f in files:
+            full = os.path.join(root, f)
+            if any(fnmatch.fnmatch(full, e) for e in excl):
+                continue
+            z.write(full, full)
+PY
+fi
 echo "  dibuat: $(du -h "$ZIP" | cut -f1)  $ZIP"
 echo
 echo "== Isi $ZIP =="
