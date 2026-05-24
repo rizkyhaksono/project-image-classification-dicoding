@@ -1,0 +1,11 @@
+# Lingkungan acuan: Google Colab (Python 3.12). Versi mengikuti runtime Colab 2025-2026.
+# Disarankan membuat ulang dengan `pip freeze > requirements.txt` setelah notebook dijalankan
+# di Colab agar versi sama persis dengan lingkungan eksekusi Anda.
+tensorflow==2.19.0
+tensorflowjs==4.22.0
+tensorflow-hub==0.16.1
+numpy==2.0.2
+matplotlib==3.10.0
+pillow==11.1.0
+scikit-learn==1.6.1
+kaggle==1.6.17
