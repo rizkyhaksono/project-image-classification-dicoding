@@ -6,14 +6,16 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.4
+#       jupytext_version: 1.19.3
 #   kernelspec:
 #     display_name: Python 3
-#     language: python
 #     name: python3
 # ---
 
-# %% [markdown]
+# %% [markdown] id="view-in-github" colab_type="text"
+# <a href="https://colab.research.google.com/github/rizkyhaksono/project-image-classification-dicoding/blob/main/submission/notebook.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+
+# %% [markdown] id="79b70187"
 # # Proyek Klasifikasi Gambar — Animals-10
 #
 # **Submission Akhir — Belajar Pengembangan Machine Learning (Dicoding)**
@@ -47,7 +49,7 @@
 # > **Catatan eksekusi:** jalankan di **Google Colab** dengan **Runtime → T4 GPU**
 # > (`Runtime → Change runtime type → T4 GPU`), lalu `Runtime → Run all`.
 
-# %% [markdown]
+# %% [markdown] id="9e8c7152"
 # ## 1. Persiapan & Unduh Dataset
 #
 # ### Autentikasi Kaggle
@@ -60,11 +62,11 @@
 # Saat sel dijalankan: **unggah `kaggle.json`** bila punya, atau **batalkan unggahan** lalu
 # **tempel token `KGAT_...`** saat diminta (token tidak ikut tersimpan di notebook).
 
-# %%
+# %% id="15640cbd"
 # Perlu kaggle CLI >= 1.8.0 agar token KGAT_ didukung; --upgrade memastikan versinya cukup baru.
-!pip install -q --upgrade kaggle
+# !pip install -q --upgrade kaggle
 
-# %%
+# %% id="9e02fbd3" outputId="a9457b1a-aa49-45dc-f970-875e1ef0489e" colab={"base_uri": "https://localhost:8080/"}
 import os
 import getpass
 
@@ -101,14 +103,14 @@ if not _have_kaggle_creds():
 
 print("Kredensial Kaggle siap.")
 
-# %%
+# %% id="94c4123f" outputId="db3f0a9a-2498-4cde-add0-92ccd0edece4" colab={"base_uri": "https://localhost:8080/"}
 # Unduh & ekstrak dataset (~26k gambar). Diunduh sekali; lewati jika folder sudah ada.
 if not os.path.isdir("data/raw-img"):
-    !kaggle datasets download -d alessiocorrado99/animals10
-    !unzip -q animals10.zip -d data
+    # !kaggle datasets download -d alessiocorrado99/animals10
+    # !unzip -q animals10.zip -d data
 print("Isi folder data/:", os.listdir("data"))
 
-# %%
+# %% id="cb6e78c5" outputId="330c33d8-fca7-459e-c4c3-059cf189d6eb" colab={"base_uri": "https://localhost:8080/"}
 # Import seluruh library dan tetapkan seed agar hasil reproducible.
 import random
 import numpy as np
@@ -125,7 +127,7 @@ print("TensorFlow :", tf.__version__)
 print("Keras      :", tf.keras.__version__)
 print("GPU        :", tf.config.list_physical_devices("GPU") or "TIDAK ADA — gunakan Runtime T4 GPU!")
 
-# %% [markdown]
+# %% [markdown] id="df873e9c"
 # ## 2. Exploratory Data Analysis (EDA)
 #
 # Kita memeriksa jumlah gambar per kelas dan **ragam resolusi gambar asli**. Dataset ini
@@ -133,7 +135,7 @@ print("GPU        :", tf.config.list_physical_devices("GPU") or "TIDAK ADA — g
 # kita tidak melakukan pra-resize manual — proses *resize* hanya dilakukan di dalam pipeline
 # pelatihan ke ukuran input model.
 
-# %%
+# %% id="26e5aa48" outputId="913b049a-4cb7-41d6-f518-744e8afd6e8f" colab={"base_uri": "https://localhost:8080/"}
 from PIL import Image
 
 DATA_DIR = "data/raw-img"
@@ -180,7 +182,7 @@ def explore_dataset(directory):
 
 total = explore_dataset(DATA_DIR)
 
-# %%
+# %% id="b06d25b7" outputId="a93b94e7-d51c-47a7-f6cc-e5c1cf1ec39e" colab={"base_uri": "https://localhost:8080/", "height": 299}
 # Tampilkan beberapa contoh gambar dari tiap kelas.
 fig, axes = plt.subplots(2, 5, figsize=(16, 7))
 for ax, subdir in zip(axes.ravel(), sorted(os.listdir(DATA_DIR))):
@@ -195,7 +197,7 @@ plt.suptitle("Contoh gambar tiap kelas (resolusi asli berbeda-beda)", fontsize=1
 plt.tight_layout()
 plt.show()
 
-# %% [markdown]
+# %% [markdown] id="6f519ade"
 # ## 3. Membagi Dataset: Train / Validation / Test (80 / 10 / 10)
 #
 # `image_dataset_from_directory` hanya mendukung pembagian dua arah (`validation_split`).
@@ -203,7 +205,7 @@ plt.show()
 # menjadi *validation* dan *test* menggunakan `take`/`skip` — pola resmi dari tutorial
 # *transfer learning* TensorFlow. Hasilnya: **train 80% / validation 10% / test 10%**.
 
-# %%
+# %% id="561112ab" outputId="08435f80-9528-4bf8-d865-70ba0acf53d5" colab={"base_uri": "https://localhost:8080/"}
 IMG_SIZE = (224, 224)   # ukuran input MobileNetV2
 BATCH = 32
 
@@ -237,7 +239,7 @@ test_ds = test_ds.cache().prefetch(AUTOTUNE)
 print(f"Batch  -> train: {train_ds.cardinality().numpy()}, "
       f"val: {val_ds.cardinality().numpy()}, test: {test_ds.cardinality().numpy()}")
 
-# %% [markdown]
+# %% [markdown] id="bdd47f61"
 # ## 4. Arsitektur Model (Sequential + Conv2D + Pooling)
 #
 # Model `Sequential` terdiri atas:
@@ -250,7 +252,7 @@ print(f"Batch  -> train: {train_ds.cardinality().numpy()}, "
 # 4. **Lapisan `Conv2D` + `MaxPooling2D` buatan sendiri** — memenuhi Kriteria 4 secara eksplisit.
 # 5. Kepala klasifikasi `Dense` + `Dropout` + `softmax`.
 
-# %%
+# %% id="6448d0d1" outputId="a82ea7c1-95b8-4870-bc4d-44861e35e0df" colab={"base_uri": "https://localhost:8080/", "height": 544}
 base_model = tf.keras.applications.MobileNetV2(
     input_shape=IMG_SIZE + (3,), include_top=False, weights="imagenet"
 )
@@ -279,13 +281,13 @@ model = tf.keras.Sequential([
 
 model.summary()
 
-# %% [markdown]
+# %% [markdown] id="72895104"
 # ## 5. Callback
 #
 # Kita memakai empat callback (memenuhi saran "mengimplementasikan callback"), termasuk satu
 # **callback kustom** yang menghentikan pelatihan saat akurasi validasi mencapai target.
 
-# %%
+# %% id="b127d0fe"
 class StopAtAccuracy(tf.keras.callbacks.Callback):
     """Hentikan pelatihan ketika val_accuracy mencapai ambang target."""
 
@@ -310,7 +312,7 @@ callbacks = [
     StopAtAccuracy(target=0.97),
 ]
 
-# %% [markdown]
+# %% [markdown] id="fa5e1865"
 # ## 6. Pelatihan Dua Tahap
 #
 # **Tahap 1 — *feature extraction*:** basis MobileNetV2 dibekukan, hanya kepala model yang dilatih.
@@ -319,7 +321,7 @@ callbacks = [
 # kecil untuk mendorong akurasi melewati 95%. Lapisan `BatchNormalization` tetap dibekukan agar
 # statistik berjalannya tidak rusak.
 
-# %%
+# %% id="3723ce94" outputId="89b6885c-0c12-40e0-a629-7422b2feba45" colab={"base_uri": "https://localhost:8080/"}
 # --- Tahap 1: feature extraction ---
 EPOCHS_HEAD = 12
 model.compile(optimizer=tf.keras.optimizers.Adam(1e-3),
@@ -327,7 +329,7 @@ model.compile(optimizer=tf.keras.optimizers.Adam(1e-3),
 history_head = model.fit(train_ds, validation_data=val_ds,
                          epochs=EPOCHS_HEAD, callbacks=callbacks)
 
-# %%
+# %% id="b08ac1e8" outputId="b4511c9a-1cd3-451e-dd04-ec454e71fbb5" colab={"base_uri": "https://localhost:8080/"}
 # --- Tahap 2: fine-tuning ---
 base_model.trainable = True
 FINE_TUNE_AT = len(base_model.layers) - 40            # buka ~40 lapisan teratas
@@ -343,7 +345,7 @@ model.compile(optimizer=tf.keras.optimizers.Adam(1e-5),  # LR kecil untuk fine-t
 history_fine = model.fit(train_ds, validation_data=val_ds,
                          epochs=EPOCHS_FINE, callbacks=callbacks)
 
-# %%
+# %% id="d3f0ddf2"
 # Gabungkan riwayat kedua tahap untuk pembuatan plot.
 def merge_history(h1, h2):
     out = {}
@@ -354,13 +356,13 @@ def merge_history(h1, h2):
 history = merge_history(history_head, history_fine)
 phase1_epochs = len(history_head.history["accuracy"])
 
-# %% [markdown]
+# %% [markdown] id="0656eda3"
 # ## 7. Evaluasi Model
 #
 # Kita mengukur akurasi pada **training set** dan **test set** (keduanya wajib ≥ 85%, target ≥ 95%),
 # lalu menampilkan *classification report* dan *confusion matrix*.
 
-# %%
+# %% id="cc7e5d10" outputId="2f49dec3-6f89-423e-cb84-6842b69696b6" colab={"base_uri": "https://localhost:8080/"}
 train_loss, train_acc = model.evaluate(train_ds, verbose=0)
 test_loss, test_acc = model.evaluate(test_ds, verbose=0)
 print(f"Akurasi Training : {train_acc:.4f}")
@@ -370,7 +372,7 @@ print("\n✅ Memenuhi syarat wajib ≥85%." +
       ("  ✅ Memenuhi saran ≥95%." if train_acc >= 0.95 and test_acc >= 0.95 else
        "  ⚠️ Belum mencapai 95% — tambah epoch / lapisan fine-tuning."))
 
-# %%
+# %% id="3f9e4e26" outputId="6e29858f-9264-4233-a6e5-5c6262cdea8e" colab={"base_uri": "https://localhost:8080/", "height": 911}
 from sklearn.metrics import classification_report, confusion_matrix
 
 # Kumpulkan label asli & prediksi dalam SATU lintasan agar urutan konsisten.
@@ -399,14 +401,14 @@ plt.xlabel("Prediksi")
 plt.tight_layout()
 plt.show()
 
-# %% [markdown]
+# %% [markdown] id="deb4bcff"
 # ## 8. Visualisasi Akurasi & Loss
 #
 # Plot di bawah memperlihatkan perkembangan akurasi dan loss (train vs validation) sepanjang
 # pelatihan. Garis putus-putus menandai transisi dari Tahap 1 (*feature extraction*) ke
 # Tahap 2 (*fine-tuning*).
 
-# %%
+# %% id="1d7c5b5f" outputId="07743c59-7d47-457f-ae98-76fea8d8ed9f" colab={"base_uri": "https://localhost:8080/", "height": 240}
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
 
 ax1.plot(history["accuracy"], label="Train")
@@ -423,7 +425,7 @@ ax2.set_title("Loss Model"); ax2.set_xlabel("Epoch"); ax2.set_ylabel("Loss"); ax
 plt.tight_layout()
 plt.show()
 
-# %% [markdown]
+# %% [markdown] id="dc81bbd5"
 # ## 9. Ekspor — SavedModel
 #
 # Pada Keras 3 (default Colab), `model.save()` menulis format `.keras`. Untuk menghasilkan
@@ -435,7 +437,7 @@ plt.show()
 # (bukan saat deployment), kita ekspor **model inferensi tanpa lapisan augmentasi** —
 # bobot hasil pelatihan tetap dipakai, tanpa perlu melatih ulang.
 
-# %%
+# %% id="e6bd1023" outputId="69bebac1-a788-4ec0-b382-ecc9ee62e081" colab={"base_uri": "https://localhost:8080/"}
 SAVED_MODEL_DIR = "saved_model"
 
 # Buang lapisan augmentasi (indeks 0); lapisan lain memakai bobot hasil pelatihan.
@@ -447,13 +449,13 @@ inference_model.export(SAVED_MODEL_DIR)
 print("Lapisan model inferensi :", [l.name for l in inference_model.layers])
 print("Isi SavedModel          :", os.listdir(SAVED_MODEL_DIR))
 
-# %% [markdown]
+# %% [markdown] id="50cf4e38"
 # ## 10. Ekspor — TF-Lite
 #
 # Konversi dilakukan dari direktori SavedModel (jalur paling andal di Keras 3). Kita juga
 # menulis `label.txt` sesuai urutan indeks kelas model.
 
-# %%
+# %% id="d6ee8f15" outputId="7dd542b1-777c-40ff-b455-18064b0ffd5a" colab={"base_uri": "https://localhost:8080/"}
 os.makedirs("tflite", exist_ok=True)
 
 converter = tf.lite.TFLiteConverter.from_saved_model(SAVED_MODEL_DIR)
@@ -470,14 +472,14 @@ with open("tflite/label.txt", "w") as f:
 print("Ukuran model.tflite : %.2f MB" % (os.path.getsize("tflite/model.tflite") / 1e6))
 print("label.txt           :", en_class_names)
 
-# %% [markdown]
+# %% [markdown] id="b950408b"
 # ## 11. Inferensi (Bukti Menggunakan Model TF-Lite)
 #
 # Sebagai bukti inferensi (salah satu saran penilaian), kita memuat **model TF-Lite** dan
 # memprediksi beberapa gambar dari **test set**. Karena lapisan *rescaling* berada di dalam
 # model, masukan TF-Lite adalah piksel mentah rentang `[0, 255]`.
 
-# %%
+# %% id="53db87fa" outputId="db8afcdd-b941-43f8-9ccd-3bca3e37fe23" colab={"base_uri": "https://localhost:8080/", "height": 843}
 interpreter = tf.lite.Interpreter(model_path="tflite/model.tflite")
 interpreter.allocate_tensors()
 in_idx = interpreter.get_input_details()[0]["index"]
@@ -510,7 +512,7 @@ plt.suptitle("Bukti Inferensi Model TF-Lite (hijau = benar, merah = salah)", fon
 plt.tight_layout()
 plt.show()
 
-# %% [markdown]
+# %% [markdown] id="011b4d0d"
 # ## 12. Ekspor — TensorFlow.js
 #
 # `tensorflowjs_converter` berjalan sebagai **subprocess** yang membaca direktori `saved_model/`
@@ -522,33 +524,33 @@ plt.show()
 # > versi TF/numpy di kernel — ini **aman** karena seluruh langkah TF lain sudah selesai dan
 # > artefak (`saved_model/`, `tflite/`) sudah tersimpan di disk.
 
-# %%
+# %% id="706e85a2" outputId="928e862f-2669-4a53-95d2-73e1cf36e2e1" colab={"base_uri": "https://localhost:8080/"}
 # Instal tensorflowjs LENGKAP (jangan pakai --no-deps) agar semua dependensi converter tersedia.
-!pip install -q tensorflowjs
+# !pip install -q tensorflowjs
 
-# %%
+# %% id="5bad86d7" outputId="06f6616b-3b29-4c81-9110-4c840413eccc" colab={"base_uri": "https://localhost:8080/"}
 # Konversi SavedModel -> TensorFlow.js graph model.
-!tensorflowjs_converter \
-    --input_format=tf_saved_model \
-    --output_format=tfjs_graph_model \
-    --signature_name=serving_default \
-    --saved_model_tags=serve \
-    saved_model tfjs_model
+# !tensorflowjs_converter \
+#     --input_format=tf_saved_model \
+#     --output_format=tfjs_graph_model \
+#     --signature_name=serving_default \
+#     --saved_model_tags=serve \
+#     saved_model tfjs_model
 
 print("Isi tfjs_model:", os.listdir("tfjs_model"))
 
-# %% [markdown]
+# %% [markdown] id="db403e34"
 # ## 13. requirements.txt
 #
 # Hasilkan daftar dependensi dari lingkungan eksekusi. (Sebagai alternatif yang lebih ringkas,
 # dapat digunakan `pipreqs` yang hanya mencantumkan paket yang benar-benar di-*import*.)
 
-# %%
-!pip freeze > requirements.txt
+# %% id="39215d1a" outputId="266fea15-74e4-402d-85f1-eb0973b61266" colab={"base_uri": "https://localhost:8080/"}
+# !pip freeze > requirements.txt
 print("requirements.txt dibuat. Cuplikan paket inti:")
-!grep -Ei "^(tensorflow|tensorflowjs|keras|numpy|matplotlib|pillow|scikit-learn|kaggle)" requirements.txt
+# !grep -Ei "^(tensorflow|tensorflowjs|keras|numpy|matplotlib|pillow|scikit-learn|kaggle)" requirements.txt
 
-# %% [markdown]
+# %% [markdown] id="86f54d57"
 # ## Ringkasan
 #
 # - Model `Sequential` (MobileNetV2 + `Conv2D`/`MaxPooling2D` + kepala `Dense`) dilatih dua tahap.
