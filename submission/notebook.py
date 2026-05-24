@@ -428,11 +428,24 @@ plt.show()
 #
 # Pada Keras 3 (default Colab), `model.save()` menulis format `.keras`. Untuk menghasilkan
 # **direktori SavedModel** (`saved_model.pb` + `variables/`) digunakan `model.export()`.
+#
+# ⚠️ **Penting:** lapisan augmentasi (`RandomRotation` / `RandomZoom`) memakai op
+# `ImageProjectiveTransformV3` yang **tidak didukung TF-Lite**, sehingga konversi `.tflite`
+# akan gagal bila lapisan ini ikut diekspor. Karena augmentasi hanya diperlukan saat *training*
+# (bukan saat deployment), kita ekspor **model inferensi tanpa lapisan augmentasi** —
+# bobot hasil pelatihan tetap dipakai, tanpa perlu melatih ulang.
 
 # %%
 SAVED_MODEL_DIR = "saved_model"
-model.export(SAVED_MODEL_DIR)
-print("Isi SavedModel:", os.listdir(SAVED_MODEL_DIR))
+
+# Buang lapisan augmentasi (indeks 0); lapisan lain memakai bobot hasil pelatihan.
+inference_model = tf.keras.Sequential(
+    [tf.keras.Input(shape=IMG_SIZE + (3,))] + model.layers[1:],
+    name="animals10_inference",
+)
+inference_model.export(SAVED_MODEL_DIR)
+print("Lapisan model inferensi :", [l.name for l in inference_model.layers])
+print("Isi SavedModel          :", os.listdir(SAVED_MODEL_DIR))
 
 # %% [markdown]
 # ## 10. Ekspor — TF-Lite
