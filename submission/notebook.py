@@ -513,14 +513,18 @@ plt.show()
 # %% [markdown]
 # ## 12. Ekspor — TensorFlow.js
 #
-# `tensorflowjs` mem-*pin* versi TF/jax/tf-keras lama yang dapat mengganggu TF bawaan Colab.
-# Mitigasi: jalankan langkah ini **paling akhir** dan instal dengan `--no-deps`. Konversi
-# membaca direktori `saved_model/` di disk sehingga tetap aman walau runtime perlu di-restart.
+# `tensorflowjs_converter` berjalan sebagai **subprocess** yang membaca direktori `saved_model/`
+# di disk, jadi tidak terpengaruh versi TF di kernel. Kita instal `tensorflowjs` **lengkap**
+# (beserta seluruh dependensinya — termasuk `tensorflow_decision_forests` & `tf-keras`) dan
+# menjalankannya **paling akhir** agar perubahan versi paket tidak mengganggu sel-sel sebelumnya.
+#
+# > Catatan: instalasi penuh mungkin menampilkan peringatan "incompatible" dan sempat mengubah
+# > versi TF/numpy di kernel — ini **aman** karena seluruh langkah TF lain sudah selesai dan
+# > artefak (`saved_model/`, `tflite/`) sudah tersimpan di disk.
 
 # %%
-# Instalasi terisolasi untuk menghindari konflik dependensi dengan TF bawaan Colab.
-!pip install -q tensorflowjs --no-deps
-!pip install -q tensorflow-hub
+# Instal tensorflowjs LENGKAP (jangan pakai --no-deps) agar semua dependensi converter tersedia.
+!pip install -q tensorflowjs
 
 # %%
 # Konversi SavedModel -> TensorFlow.js graph model.
